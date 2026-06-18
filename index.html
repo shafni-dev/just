@@ -11,19 +11,22 @@
     --bg-inset:  #0c1119;
     --border:    #1f2733;
     --border-hi: #2c3a4d;
-    --fg:        #c8d3e0;
-    --fg-dim:    #6b7888;
-    --fg-faint:  #44505f;
+    --fg:        #cdd8e5;
+    --fg-dim:    #7c8a9c;
+    --fg-faint:  #4a5563;
     --accent:    #4ec9b0;
+    --accent-hi: #5fd9c0;
     --accent-2:  #569cd6;
     --warn:      #d7ba7d;
+    --danger:    #f07178;
     --hex-off:   #569cd6;
-    --hex-byte:  #c8d3e0;
+    --hex-byte:  #cdd8e5;
     --hex-ascii: #4ec9b0;
     --hex-dot:   #44505f;
-    --danger:    #f07178;
     --mono: "SF Mono", "SFMono-Regular", ui-monospace, "Cascadia Code",
             "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+    --r:    10px;
+    --r-sm: 7px;
   }
 
   * { box-sizing: border-box; }
@@ -40,41 +43,61 @@
   }
 
   body {
-    padding: 24px 16px 64px;
-    max-width: 1040px;
+    padding: 28px 20px 80px;
+    max-width: 960px;
     margin: 0 auto;
   }
 
   a { color: var(--accent-2); }
+  code { color: var(--fg-dim); }
+  strong { font-weight: 600; color: var(--fg); }
 
   /* ---------- Header ---------- */
   header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
     border-bottom: 1px solid var(--border);
-    padding-bottom: 16px;
+    padding-bottom: 18px;
     margin-bottom: 24px;
   }
+  .brand { display: flex; gap: 12px; align-items: flex-start; min-width: 0; }
+  .brand-mark {
+    color: var(--accent);
+    font-size: 20px;
+    line-height: 1.3;
+    animation: blink 1.3s steps(2, start) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
   h1 {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 600;
-    margin: 0 0 6px;
+    margin: 0 0 5px;
     letter-spacing: -0.01em;
     color: var(--fg);
   }
-  h1 .prompt { color: var(--accent); }
   .subtitle {
     color: var(--fg-dim);
     font-size: 12.5px;
     margin: 0;
+    max-width: 540px;
   }
-  .privacy-note {
-    margin-top: 10px;
-    font-size: 11.5px;
-    color: var(--fg-faint);
-    display: flex;
+  .pill {
+    display: inline-flex;
     align-items: center;
     gap: 7px;
+    font-size: 11px;
+    color: var(--fg-dim);
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    padding: 6px 11px;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex: none;
   }
-  .privacy-note .dot {
+  .pill .dot {
     width: 7px; height: 7px; border-radius: 50%;
     background: var(--accent); flex: none;
     box-shadow: 0 0 6px var(--accent);
@@ -82,18 +105,20 @@
 
   /* ---------- Mode switch ---------- */
   .mode-switch {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
-    margin-bottom: 22px;
+    margin-bottom: 24px;
   }
   .mode-btn {
-    flex: 1 1 0;
     text-align: left;
     background: var(--bg-panel);
     border: 1px solid var(--border);
     color: var(--fg-dim);
-    border-radius: 8px;
+    border-radius: var(--r);
     padding: 14px 16px;
+    cursor: pointer;
+    font-family: var(--mono);
     transition: border-color .15s, background .15s, color .15s;
   }
   .mode-btn:hover { border-color: var(--border-hi); color: var(--fg); }
@@ -105,48 +130,35 @@
   .mode-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
   .mode-btn .mb-title { font-size: 14px; font-weight: 600; display: block; margin-bottom: 3px; }
   .mode-btn.active .mb-title { color: var(--accent); }
-  .mode-btn .mb-sub { font-size: 11.5px; color: var(--fg-dim); display: block; }
-  .mode-btn .mb-arrow { font-size: 11px; color: var(--fg-faint); }
-
-  /* mime row */
-  .field-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; align-items: flex-end; }
-  .field { display: flex; flex-direction: column; gap: 5px; }
-  .field label { font-size: 11px; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.05em; }
-  .field input, .field select {
-    font-family: var(--mono);
-    font-size: 13px;
-    background: var(--bg-inset);
-    border: 1px solid var(--border-hi);
-    color: var(--fg);
-    border-radius: 6px;
-    padding: 8px 10px;
-  }
-  .field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  .mode-btn .mb-sub { font-size: 11.5px; color: var(--fg-dim); display: block; line-height: 1.45; }
+  .mode-btn .mb-arrow { color: var(--fg-faint); }
 
   /* ---------- Steps ---------- */
   .step {
     background: var(--bg-panel);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 18px;
+    border-radius: var(--r);
+    margin-bottom: 16px;
     overflow: hidden;
   }
   .step-head {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 16px;
+    flex-wrap: wrap;
+    padding: 13px 16px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-inset);
   }
   .step-num {
     flex: none;
     width: 24px; height: 24px;
-    border-radius: 5px;
+    border-radius: 6px;
     border: 1px solid var(--border-hi);
     display: grid; place-items: center;
     font-size: 12px; font-weight: 600;
     color: var(--fg-dim);
+    transition: background .15s, color .15s, border-color .15s;
   }
   .step.active .step-num,
   .step.done .step-num {
@@ -158,6 +170,7 @@
     font-weight: 600;
     font-size: 13.5px;
     color: var(--fg);
+    min-width: 0;
   }
   .step-status {
     margin-left: auto;
@@ -165,6 +178,7 @@
     color: var(--fg-faint);
     text-transform: uppercase;
     letter-spacing: 0.06em;
+    white-space: nowrap;
   }
   .step.done .step-status { color: var(--accent); }
   .step-body { padding: 16px; }
@@ -172,8 +186,8 @@
   /* ---------- Drop zone ---------- */
   .dropzone {
     border: 1.5px dashed var(--border-hi);
-    border-radius: 8px;
-    padding: 40px 20px;
+    border-radius: var(--r-sm);
+    padding: 36px 20px;
     text-align: center;
     cursor: pointer;
     transition: border-color .15s, background .15s;
@@ -184,53 +198,46 @@
     border-color: var(--accent);
     background: rgba(78,201,176,0.06);
   }
-  .dropzone:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 3px;
-  }
-  .dropzone .big {
-    font-size: 15px;
-    color: var(--fg);
-    margin-bottom: 6px;
-  }
-  .dropzone .small {
-    font-size: 12px;
-    color: var(--fg-dim);
-  }
+  .dropzone:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .dropzone .big { font-size: 15px; color: var(--fg); margin-bottom: 6px; }
+  .dropzone .small { font-size: 12px; color: var(--fg-dim); }
   .dropzone .glyph {
-    font-size: 28px;
+    font-size: 26px;
     color: var(--accent);
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     display: block;
   }
   input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
   /* ---------- Buttons ---------- */
-  button {
-    font-family: var(--mono);
-    font-size: 12.5px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background .12s, border-color .12s, color .12s;
-  }
+  button { font-family: var(--mono); cursor: pointer; }
   .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 0 16px;
+    font-size: 12.5px;
+    font-weight: 500;
     background: transparent;
     border: 1px solid var(--border-hi);
     color: var(--fg);
-    padding: 8px 16px;
+    border-radius: var(--r-sm);
+    transition: background .12s, border-color .12s, color .12s, transform .05s;
   }
   .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:active { transform: translateY(1px); }
   .btn-primary {
     background: var(--accent);
     border-color: var(--accent);
     color: var(--bg);
     font-weight: 600;
   }
-  .btn-primary:hover { background: #5fd9c0; border-color: #5fd9c0; color: var(--bg); }
-  .btn:focus-visible, .dropzone:focus-visible {
-    outline: 2px solid var(--accent-2);
-    outline-offset: 2px;
-  }
+  .btn-primary:hover { background: var(--accent-hi); border-color: var(--accent-hi); color: var(--bg); }
+  .btn-ghost { border-color: var(--border); color: var(--fg-dim); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:focus-visible, .dropzone:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
   .btn:disabled { opacity: .4; cursor: not-allowed; }
   .toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
 
@@ -238,7 +245,7 @@
   .tabs {
     display: flex;
     gap: 4px;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
     border-bottom: 1px solid var(--border);
   }
   .tab {
@@ -246,9 +253,10 @@
     border: 1px solid transparent;
     border-bottom: none;
     color: var(--fg-dim);
-    padding: 8px 16px;
-    border-radius: 6px 6px 0 0;
+    padding: 9px 18px;
+    border-radius: var(--r-sm) var(--r-sm) 0 0;
     font-weight: 600;
+    font-size: 12.5px;
     margin-bottom: -1px;
   }
   .tab:hover { color: var(--fg); }
@@ -260,22 +268,26 @@
   }
   .tab:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
 
-  textarea#textInput {
+  textarea#textInput, textarea#decodeData {
     width: 100%;
     min-height: 130px;
     resize: vertical;
     background: var(--bg-inset);
     border: 1px solid var(--border-hi);
-    border-radius: 6px;
+    border-radius: var(--r-sm);
     color: var(--fg);
     font-family: var(--mono);
     font-size: 13px;
     line-height: 1.55;
     padding: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
-  textarea#textInput:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
-  .text-meta { font-size: 11.5px; color: var(--fg-dim); margin-bottom: 12px; }
+  textarea#textInput:focus-visible, textarea#decodeData:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent);
+  }
+  .text-meta, .hint { font-size: 11.5px; color: var(--fg-dim); line-height: 1.5; }
+  .text-meta { margin-bottom: 12px; }
+  .hint { margin: 10px 0 0; }
 
   pre.text-preview {
     margin: 0;
@@ -288,13 +300,26 @@
     width: 100%;
   }
 
-  /* ---------- Preview ---------- */
-  .preview-wrap {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    align-items: flex-start;
+  /* ---------- Form fields ---------- */
+  .field-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field label { font-size: 11px; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  .field input, .field select {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--bg-inset);
+    border: 1px solid var(--border-hi);
+    color: var(--fg);
+    border-radius: var(--r-sm);
+    padding: 9px 11px;
+    min-height: 40px;
   }
+  .field input:focus-visible, .field select:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent);
+  }
+
+  /* ---------- Preview ---------- */
+  .preview-wrap { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
   .preview-box { flex: 1 1 240px; min-width: 0; }
   .preview-label {
     font-size: 11px;
@@ -306,7 +331,7 @@
   .media-frame {
     background: var(--bg-inset);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--r-sm);
     padding: 8px;
     display: grid;
     place-items: center;
@@ -315,7 +340,7 @@
   .media-frame img, .media-frame video {
     max-width: 100%;
     max-height: 320px;
-    border-radius: 3px;
+    border-radius: 4px;
     display: block;
   }
 
@@ -324,26 +349,22 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 10px;
-    margin-bottom: 18px;
+    margin-bottom: 20px;
   }
   .stat {
     background: var(--bg-inset);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px 12px;
+    border-radius: var(--r-sm);
+    padding: 11px 13px;
   }
   .stat .k {
     font-size: 10.5px;
     color: var(--fg-dim);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-bottom: 4px;
+    margin-bottom: 5px;
   }
-  .stat .v {
-    font-size: 14px;
-    color: var(--fg);
-    word-break: break-all;
-  }
+  .stat .v { font-size: 14px; color: var(--fg); word-break: break-all; }
   .stat .v .unit { color: var(--fg-dim); font-size: 11.5px; }
   .stat .v em { color: var(--accent); font-style: normal; }
 
@@ -366,12 +387,13 @@
   .hex-dump {
     background: var(--bg-inset);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--r-sm);
     padding: 12px;
     overflow-x: auto;
     font-size: 12.5px;
     line-height: 1.65;
     white-space: pre;
+    -webkit-overflow-scrolling: touch;
   }
   .hex-col-head {
     color: var(--fg-faint);
@@ -388,72 +410,104 @@
   .hex-row .asc  { color: var(--hex-ascii); }
   .hex-row .asc .dot { color: var(--hex-dot); }
 
-  /* animate-in */
-  .hex-row.anim {
-    animation: rowin .28s ease both;
+  /* ---------- Export action groups ---------- */
+  .export {
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
   }
+  .group { margin-bottom: 18px; }
+  .group:last-child { margin-bottom: 0; }
+  .group-label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-dim);
+    margin-bottom: 10px;
+  }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ---------- animations ---------- */
+  .hex-row.anim { animation: rowin .28s ease both; }
   @keyframes rowin {
     from { opacity: 0; transform: translateX(-6px); }
     to   { opacity: 1; transform: translateX(0); }
   }
-
   .fade-in { animation: fadein .35s ease both; }
   @keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
   /* ---------- misc ---------- */
   .hidden { display: none !important; }
   .roundtrip-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
     background: rgba(78,201,176,0.08);
     border: 1px solid var(--accent);
     color: var(--accent);
-    border-radius: 6px;
-    padding: 8px 14px;
+    border-radius: var(--r-sm);
+    padding: 11px 14px;
     font-size: 12.5px;
-    margin-top: 14px;
+    line-height: 1.5;
+    margin-top: 16px;
   }
   .roundtrip-badge.fail {
     background: rgba(240,113,120,0.08);
     border-color: var(--danger);
     color: var(--danger);
   }
-  .roundtrip-badge .mark { font-weight: 700; }
+  .roundtrip-badge .mark { font-weight: 700; flex: none; }
   .error-msg {
     color: var(--danger);
     font-size: 12.5px;
-    margin-top: 10px;
+    margin-top: 12px;
+    line-height: 1.5;
   }
   footer {
-    margin-top: 28px;
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
     font-size: 11px;
     color: var(--fg-faint);
     text-align: center;
     line-height: 1.7;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .hex-row.anim, .fade-in { animation: none !important; }
-    * { transition: none !important; }
+  /* ---------- responsive ---------- */
+  @media (max-width: 620px) {
+    body { padding: 18px 14px 56px; }
+    header { gap: 12px; }
+    .pill { font-size: 10.5px; padding: 5px 10px; }
+    .mode-switch { grid-template-columns: 1fr; gap: 8px; }
+    .step-body { padding: 14px; }
+    .preview-wrap { gap: 14px; }
+    /* full-width, easy-to-tap buttons */
+    .btn-row .btn, .toolbar .btn { flex: 1 1 100%; }
+    .field-row .field { flex: 1 1 100%; }
+    .hex-dump { font-size: 11px; padding: 10px; }
+    .step-status { font-size: 10px; }
+    .dropzone { padding: 28px 14px; }
   }
 
-  @media (max-width: 560px) {
-    body { padding: 16px 10px 48px; }
-    .hex-dump { font-size: 11px; padding: 8px; }
-    .dropzone { padding: 28px 14px; }
+  @media (prefers-reduced-motion: reduce) {
+    .hex-row.anim, .fade-in { animation: none !important; }
+    .brand-mark { animation: none !important; }
+    * { transition: none !important; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <h1><span class="prompt">▮</span> Binary Round-Trip Inspector</h1>
-  <p class="subtitle">Media → raw bytes → hex dump → reconstructed Blob. A byte-for-byte verification harness for WebRTC chunked transfer.</p>
-  <div class="privacy-note">
-    <span class="dot"></span>
-    Fully client-side · no server · no uploads · no network calls — your file never leaves this tab.
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">▮</span>
+    <div>
+      <h1>Binary Round-Trip Inspector</h1>
+      <p class="subtitle">Encode media &amp; text into raw bytes, then reconstruct them — verified byte-for-byte, entirely in your browser.</p>
+    </div>
   </div>
+  <span class="pill"><span class="dot"></span> 100% client-side · no uploads</span>
 </header>
 
 <div class="mode-switch" role="tablist" aria-label="Direction">
@@ -474,7 +528,7 @@
 <section class="step active" id="step-input">
   <div class="step-head">
     <span class="step-num">0</span>
-    <span class="step-title">Select source media</span>
+    <span class="step-title">Select source</span>
     <span class="step-status" id="status-input">awaiting file</span>
   </div>
   <div class="step-body">
@@ -488,7 +542,7 @@
            aria-label="Select or drop an image or video file">
         <span class="glyph" aria-hidden="true">⇪</span>
         <div class="big">Drop an image or video here</div>
-        <div class="small">or press Enter / click to browse — <code>image/*</code>, <code>video/*</code></div>
+        <div class="small">or press Enter / tap to browse — <code>image/*</code>, <code>video/*</code></div>
       </div>
       <input type="file" id="fileInput" accept="image/*,video/*">
     </div>
@@ -509,13 +563,13 @@
 <section class="step hidden" id="step-encode">
   <div class="step-head">
     <span class="step-num">1</span>
-    <span class="step-title">Encode → ArrayBuffer + hex dump</span>
+    <span class="step-title">Encode → bytes + hex</span>
     <span class="step-status" id="status-encode">pending</span>
   </div>
   <div class="step-body">
-    <div class="preview-wrap" style="margin-bottom:18px;">
+    <div class="preview-wrap" style="margin-bottom:20px;">
       <div class="preview-box">
-        <div class="preview-label">Original (direct from File)</div>
+        <div class="preview-label">Original source</div>
         <div class="media-frame" id="originalFrame"></div>
       </div>
     </div>
@@ -528,26 +582,25 @@
     </div>
     <div class="hex-dump" id="hexDump" aria-label="Hexadecimal dump of file bytes"></div>
 
-    <div class="hex-header" style="margin-top:18px;">
-      <span class="label">Encoded output — full bytes</span>
-    </div>
-    <div class="toolbar">
-      <button class="btn btn-primary" id="downloadB64Btn">↓ Download Base64 (.b64.txt)</button>
-      <button class="btn" id="downloadHexBtn">↓ Download Hex (.hex.txt)</button>
-      <button class="btn" id="downloadBinBtn">↓ Download raw (.bin)</button>
-    </div>
-    <div class="toolbar" style="margin-top:8px;">
-      <button class="btn" id="copyB64Btn">⧉ Copy Base64</button>
-      <button class="btn" id="copyHexBtn">⧉ Copy Hex</button>
-    </div>
-    <div class="text-meta" style="margin-top:8px;">Download a Base64 or Hex file, then <strong>upload it in Decode</strong> mode to verify the reverse trip — no copy/paste needed.</div>
-
-    <div class="hex-header" style="margin-top:18px;">
-      <span class="label">Report</span>
-    </div>
-    <div class="toolbar">
-      <button class="btn" id="copyReportBtn">⧉ Copy report (Markdown)</button>
-      <button class="btn" id="downloadReportBtn">↓ Download .md</button>
+    <div class="export">
+      <div class="group">
+        <span class="group-label">Encoded output — full bytes</span>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="downloadB64Btn">↓ Base64 (.b64.txt)</button>
+          <button class="btn" id="downloadHexBtn">↓ Hex (.hex.txt)</button>
+          <button class="btn" id="downloadBinBtn">↓ Raw (.bin)</button>
+          <button class="btn btn-ghost" id="copyB64Btn">⧉ Copy Base64</button>
+          <button class="btn btn-ghost" id="copyHexBtn">⧉ Copy Hex</button>
+        </div>
+        <p class="hint">Download Base64 or Hex, then upload it in <strong>Decode</strong> mode to verify the reverse trip — no copy/paste needed.</p>
+      </div>
+      <div class="group">
+        <span class="group-label">Report</span>
+        <div class="btn-row">
+          <button class="btn" id="copyReportBtn">⧉ Copy Markdown</button>
+          <button class="btn" id="downloadReportBtn">↓ Download .md</button>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -556,7 +609,7 @@
 <section class="step hidden" id="step-decode">
   <div class="step-head">
     <span class="step-num">2</span>
-    <span class="step-title">Decode → rebuild Blob → render</span>
+    <span class="step-title">Decode → rebuild → render</span>
     <span class="step-status" id="status-decode">pending</span>
   </div>
   <div class="step-body">
@@ -565,7 +618,7 @@
     </div>
     <div class="preview-wrap" id="decodeWrap" style="display:none;">
       <div class="preview-box">
-        <div class="preview-label">Reconstructed (from stored ArrayBuffer + MIME)</div>
+        <div class="preview-label">Reconstructed from stored bytes + MIME</div>
         <div class="media-frame" id="decodedFrame"></div>
       </div>
     </div>
@@ -582,22 +635,22 @@
 <!-- ===================== DECODE MODE ===================== -->
 <div id="decodeMode" class="hidden">
 
-<!-- STEP A: paste bytes -->
+<!-- STEP A: provide bytes -->
 <section class="step active" id="dstep-input">
   <div class="step-head">
     <span class="step-num">A</span>
-    <span class="step-title">Paste raw bytes</span>
+    <span class="step-title">Provide encoded bytes</span>
     <span class="step-status" id="status-dinput">awaiting input</span>
   </div>
   <div class="step-body">
-    <div class="dropzone" id="decodeDrop" tabindex="0" role="button" style="padding:24px 20px; margin-bottom:14px;"
+    <div class="dropzone" id="decodeDrop" tabindex="0" role="button" style="padding:24px 20px; margin-bottom:16px;"
          aria-label="Upload an encoded Base64 or Hex file">
       <span class="glyph" aria-hidden="true">↥</span>
       <div class="big">Upload an encoded file</div>
-      <div class="small">drop or click — a <code>.b64.txt</code> / <code>.hex.txt</code> file from Encode mode (format auto-detected)</div>
+      <div class="small">drop or tap — a <code>.b64.txt</code> / <code>.hex.txt</code> file from Encode mode (format auto-detected)</div>
     </div>
     <input type="file" id="decodeFileInput" accept=".txt,.b64,.hex,text/plain">
-    <div class="text-meta" style="margin-bottom:14px;">…or paste manually below:</div>
+    <div class="text-meta">…or paste manually below:</div>
 
     <div class="field-row">
       <div class="field">
@@ -625,7 +678,7 @@
 <section class="step hidden" id="dstep-bytes">
   <div class="step-head">
     <span class="step-num">B</span>
-    <span class="step-title">Parsed bytes → ArrayBuffer + hex dump</span>
+    <span class="step-title">Parsed bytes + hex</span>
     <span class="step-status" id="status-dbytes">pending</span>
   </div>
   <div class="step-body">
@@ -635,9 +688,14 @@
       <span class="hex-note" id="decodeHexNote"></span>
     </div>
     <div class="hex-dump" id="decodeHexDump" aria-label="Hexadecimal dump of parsed bytes"></div>
-    <div class="toolbar" style="margin-top:16px;">
-      <button class="btn" id="dCopyReportBtn">⧉ Copy report (Markdown)</button>
-      <button class="btn" id="dDownloadReportBtn">↓ Download .md</button>
+    <div class="export">
+      <div class="group">
+        <span class="group-label">Report</span>
+        <div class="btn-row">
+          <button class="btn" id="dCopyReportBtn">⧉ Copy Markdown</button>
+          <button class="btn" id="dDownloadReportBtn">↓ Download .md</button>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -667,8 +725,8 @@
 </div><!-- /decodeMode -->
 
 <footer>
-  Open this file directly in any modern browser. Nothing is transmitted.<br>
-  Hex view capped at the first 512 bytes; the full buffer is always used for reconstruction.
+  Open this file directly in any modern browser — nothing is transmitted.<br>
+  Hex view is capped at the first 512 bytes; the full buffer is always used for encoding and reconstruction.
 </footer>
 
 <script>
@@ -1013,12 +1071,12 @@
     if (ok) {
       roundtripResult.innerHTML =
         "<div class='roundtrip-badge'><span class='mark'>✓</span>" +
-        "Byte-for-byte identical — " + fmtNum(state.size) + " bytes in, " +
-        fmtNum(size) + " bytes out. The reconstructed Blob matches the original buffer exactly.</div>";
+        "<span>Byte-for-byte identical — " + fmtNum(state.size) + " bytes in, " +
+        fmtNum(size) + " bytes out. The reconstructed Blob matches the original buffer exactly.</span></div>";
     } else {
       roundtripResult.innerHTML =
         "<div class='roundtrip-badge fail'><span class='mark'>✕</span>" +
-        "Round-trip mismatch — reconstructed bytes differ from the original.</div>";
+        "<span>Round-trip mismatch — reconstructed bytes differ from the original.</span></div>";
     }
   }
 
@@ -1334,8 +1392,8 @@
     }
     decodeRenderResult.innerHTML =
       "<div class='roundtrip-badge'><span class='mark'>✓</span>" +
-      "Reconstructed " + fmtNum(bytes.length) + " bytes as <strong style='font-weight:600'>" +
-      escapeHtml(mime) + "</strong>. If the preview is blank, the bytes or MIME type don't match a renderable format.</div>";
+      "<span>Reconstructed " + fmtNum(bytes.length) + " bytes as <strong>" +
+      escapeHtml(mime) + "</strong>. If the preview is blank, the bytes or MIME type don't match a renderable format.</span></div>";
     setStatus($("status-drender"), "rendered ✓", true);
   });
 
