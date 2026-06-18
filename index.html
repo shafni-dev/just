@@ -532,11 +532,15 @@
       <span class="label">Encoded output — full bytes</span>
     </div>
     <div class="toolbar">
-      <button class="btn btn-primary" id="copyB64Btn">⧉ Copy encoded (Base64)</button>
-      <button class="btn" id="copyHexBtn">⧉ Copy encoded (Hex)</button>
-      <button class="btn" id="downloadBinBtn">↓ Download .bin</button>
+      <button class="btn btn-primary" id="downloadB64Btn">↓ Download Base64 (.b64.txt)</button>
+      <button class="btn" id="downloadHexBtn">↓ Download Hex (.hex.txt)</button>
+      <button class="btn" id="downloadBinBtn">↓ Download raw (.bin)</button>
     </div>
-    <div class="text-meta" style="margin-top:8px;">Paste either form straight into <strong>Decode</strong> mode to verify the reverse trip.</div>
+    <div class="toolbar" style="margin-top:8px;">
+      <button class="btn" id="copyB64Btn">⧉ Copy Base64</button>
+      <button class="btn" id="copyHexBtn">⧉ Copy Hex</button>
+    </div>
+    <div class="text-meta" style="margin-top:8px;">Download a Base64 or Hex file, then <strong>upload it in Decode</strong> mode to verify the reverse trip — no copy/paste needed.</div>
 
     <div class="hex-header" style="margin-top:18px;">
       <span class="label">Report</span>
@@ -586,6 +590,15 @@
     <span class="step-status" id="status-dinput">awaiting input</span>
   </div>
   <div class="step-body">
+    <div class="dropzone" id="decodeDrop" tabindex="0" role="button" style="padding:24px 20px; margin-bottom:14px;"
+         aria-label="Upload an encoded Base64 or Hex file">
+      <span class="glyph" aria-hidden="true">↥</span>
+      <div class="big">Upload an encoded file</div>
+      <div class="small">drop or click — a <code>.b64.txt</code> / <code>.hex.txt</code> file from Encode mode (format auto-detected)</div>
+    </div>
+    <input type="file" id="decodeFileInput" accept=".txt,.b64,.hex,text/plain">
+    <div class="text-meta" style="margin-bottom:14px;">…or paste manually below:</div>
+
     <div class="field-row">
       <div class="field">
         <label for="decodeFormat">Format</label>
@@ -1136,6 +1149,19 @@
   wireExport($("dCopyReportBtn"), $("dDownloadReportBtn"));
 
   // ---- copy / download the actual encoded output ----
+  function downloadBlob(blob, filename, btn, label) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+    flashBtn(btn, label || "✓ Saved");
+  }
+  function encBase() { return (state.name || "encoded").replace(/\.[^.]+$/, "") || "encoded"; }
+
   $("copyB64Btn").addEventListener("click", function () {
     if (!state.buffer) return;
     copyText(bufToBase64(state.buffer), $("copyB64Btn"));
@@ -1144,18 +1170,20 @@
     if (!state.buffer) return;
     copyText(bufToHex(state.buffer), $("copyHexBtn"));
   });
+  $("downloadB64Btn").addEventListener("click", function () {
+    if (!state.buffer) return;
+    downloadBlob(new Blob([bufToBase64(state.buffer)], { type: "text/plain" }),
+                 encBase() + ".b64.txt", $("downloadB64Btn"), "✓ Saved .b64");
+  });
+  $("downloadHexBtn").addEventListener("click", function () {
+    if (!state.buffer) return;
+    downloadBlob(new Blob([bufToHex(state.buffer)], { type: "text/plain" }),
+                 encBase() + ".hex.txt", $("downloadHexBtn"), "✓ Saved .hex");
+  });
   $("downloadBinBtn").addEventListener("click", function () {
     if (!state.buffer) return;
-    var blob = new Blob([state.buffer], { type: state.mime || "application/octet-stream" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = (state.name || "encoded.bin");
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function () { URL.revokeObjectURL(url); }, 0);
-    flashBtn($("downloadBinBtn"), "✓ Saved");
+    downloadBlob(new Blob([state.buffer], { type: state.mime || "application/octet-stream" }),
+                 (state.name || "encoded.bin"), $("downloadBinBtn"), "✓ Saved");
   });
 
   // ---------- mode switch ----------
@@ -1222,6 +1250,52 @@
       : "Paste base64 (e.g. iVBORw0KGgo…). Whitespace is ignored.";
   });
 
+  // auto-detect hex vs base64 from content
+  function detectFormat(text) {
+    var s = text.replace(/\s+/g, "");
+    // chars that only appear in base64 (beyond hex digits): g–z, G–Z, +, /, =
+    return /[g-zG-Z+/=]/.test(s) ? "base64" : "hex";
+  }
+
+  // upload an encoded file instead of pasting
+  var decodeDrop = $("decodeDrop");
+  var decodeFileInput = $("decodeFileInput");
+
+  function loadEncodedFile(file) {
+    decodeError.classList.add("hidden");
+    var reader = new FileReader();
+    reader.onerror = function () {
+      decodeError.textContent = "Could not read the uploaded file.";
+      decodeError.classList.remove("hidden");
+    };
+    reader.onload = function () {
+      var text = String(reader.result || "");
+      decodeData.value = text;
+      decodeFormat.value = detectFormat(text);
+      updateDecodeMeta();
+      decodeRunBtn.focus();
+    };
+    reader.readAsText(file);
+  }
+
+  decodeDrop.addEventListener("click", function () { decodeFileInput.click(); });
+  decodeDrop.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); decodeFileInput.click(); }
+  });
+  decodeFileInput.addEventListener("change", function (e) {
+    if (e.target.files && e.target.files[0]) loadEncodedFile(e.target.files[0]);
+  });
+  ["dragenter", "dragover"].forEach(function (ev) {
+    decodeDrop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); decodeDrop.classList.add("dragover"); });
+  });
+  ["dragleave", "drop"].forEach(function (ev) {
+    decodeDrop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); decodeDrop.classList.remove("dragover"); });
+  });
+  decodeDrop.addEventListener("drop", function (e) {
+    var dt = e.dataTransfer;
+    if (dt && dt.files && dt.files[0]) loadEncodedFile(dt.files[0]);
+  });
+
   decodeRunBtn.addEventListener("click", function () {
     decodeError.classList.add("hidden");
     var p = parseInput();
@@ -1267,6 +1341,7 @@
 
   decodeResetBtn.addEventListener("click", function () {
     decodeData.value = "";
+    decodeFileInput.value = "";
     decodeMeta.textContent = "no input";
     decodeError.classList.add("hidden");
     decodeStats.innerHTML = "";
