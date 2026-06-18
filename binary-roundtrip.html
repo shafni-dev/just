@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Binary Round-Trip Inspector</title>
+<style>
+  :root {
+    --bg:        #0a0e14;
+    --bg-panel:  #11161f;
+    --bg-inset:  #0c1119;
+    --border:    #1f2733;
+    --border-hi: #2c3a4d;
+    --fg:        #c8d3e0;
+    --fg-dim:    #6b7888;
+    --fg-faint:  #44505f;
+    --accent:    #4ec9b0;
+    --accent-2:  #569cd6;
+    --warn:      #d7ba7d;
+    --hex-off:   #569cd6;
+    --hex-byte:  #c8d3e0;
+    --hex-ascii: #4ec9b0;
+    --hex-dot:   #44505f;
+    --danger:    #f07178;
+    --mono: "SF Mono", "SFMono-Regular", ui-monospace, "Cascadia Code",
+            "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    padding: 24px 16px 64px;
+    max-width: 1040px;
+    margin: 0 auto;
+  }
+
+  a { color: var(--accent-2); }
+
+  /* ---------- Header ---------- */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+  }
+  h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+    color: var(--fg);
+  }
+  h1 .prompt { color: var(--accent); }
+  .subtitle {
+    color: var(--fg-dim);
+    font-size: 12.5px;
+    margin: 0;
+  }
+  .privacy-note {
+    margin-top: 10px;
+    font-size: 11.5px;
+    color: var(--fg-faint);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .privacy-note .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent); flex: none;
+    box-shadow: 0 0 6px var(--accent);
+  }
+
+  /* ---------- Mode switch ---------- */
+  .mode-switch {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .mode-btn {
+    flex: 1 1 0;
+    text-align: left;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    color: var(--fg-dim);
+    border-radius: 8px;
+    padding: 14px 16px;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .mode-btn:hover { border-color: var(--border-hi); color: var(--fg); }
+  .mode-btn.active {
+    border-color: var(--accent);
+    background: rgba(78,201,176,0.07);
+    color: var(--fg);
+  }
+  .mode-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+  .mode-btn .mb-title { font-size: 14px; font-weight: 600; display: block; margin-bottom: 3px; }
+  .mode-btn.active .mb-title { color: var(--accent); }
+  .mode-btn .mb-sub { font-size: 11.5px; color: var(--fg-dim); display: block; }
+  .mode-btn .mb-arrow { font-size: 11px; color: var(--fg-faint); }
+
+  /* mime row */
+  .field-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  .field input, .field select {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--bg-inset);
+    border: 1px solid var(--border-hi);
+    color: var(--fg);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .field input:focus-visible, .field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+
+  /* ---------- Steps ---------- */
+  .step {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 18px;
+    overflow: hidden;
+  }
+  .step-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-inset);
+  }
+  .step-num {
+    flex: none;
+    width: 24px; height: 24px;
+    border-radius: 5px;
+    border: 1px solid var(--border-hi);
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 600;
+    color: var(--fg-dim);
+  }
+  .step.active .step-num,
+  .step.done .step-num {
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .step-title {
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--fg);
+  }
+  .step-status {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--fg-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .step.done .step-status { color: var(--accent); }
+  .step-body { padding: 16px; }
+
+  /* ---------- Drop zone ---------- */
+  .dropzone {
+    border: 1.5px dashed var(--border-hi);
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    background: var(--bg-inset);
+  }
+  .dropzone:hover { border-color: var(--accent-2); }
+  .dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(78,201,176,0.06);
+  }
+  .dropzone:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+  .dropzone .big {
+    font-size: 15px;
+    color: var(--fg);
+    margin-bottom: 6px;
+  }
+  .dropzone .small {
+    font-size: 12px;
+    color: var(--fg-dim);
+  }
+  .dropzone .glyph {
+    font-size: 28px;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: block;
+  }
+  input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+  /* ---------- Buttons ---------- */
+  button {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .btn {
+    background: transparent;
+    border: 1px solid var(--border-hi);
+    color: var(--fg);
+    padding: 8px 16px;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+    font-weight: 600;
+  }
+  .btn-primary:hover { background: #5fd9c0; border-color: #5fd9c0; color: var(--bg); }
+  .btn:focus-visible, .dropzone:focus-visible {
+    outline: 2px solid var(--accent-2);
+    outline-offset: 2px;
+  }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* ---------- Input mode tabs ---------- */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: var(--fg-dim);
+    padding: 8px 16px;
+    border-radius: 6px 6px 0 0;
+    font-weight: 600;
+    margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--fg); }
+  .tab.active {
+    color: var(--accent);
+    background: var(--bg-panel);
+    border-color: var(--border);
+    border-bottom-color: var(--bg-panel);
+  }
+  .tab:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+
+  textarea#textInput {
+    width: 100%;
+    min-height: 130px;
+    resize: vertical;
+    background: var(--bg-inset);
+    border: 1px solid var(--border-hi);
+    border-radius: 6px;
+    color: var(--fg);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.55;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  textarea#textInput:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  .text-meta { font-size: 11.5px; color: var(--fg-dim); margin-bottom: 12px; }
+
+  pre.text-preview {
+    margin: 0;
+    max-height: 320px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 12.5px;
+    color: var(--fg);
+    width: 100%;
+  }
+
+  /* ---------- Preview ---------- */
+  .preview-wrap {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .preview-box { flex: 1 1 240px; min-width: 0; }
+  .preview-label {
+    font-size: 11px;
+    color: var(--fg-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+  .media-frame {
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    display: grid;
+    place-items: center;
+    min-height: 120px;
+  }
+  .media-frame img, .media-frame video {
+    max-width: 100%;
+    max-height: 320px;
+    border-radius: 3px;
+    display: block;
+  }
+
+  /* ---------- Stats ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .stat {
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .stat .k {
+    font-size: 10.5px;
+    color: var(--fg-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .stat .v {
+    font-size: 14px;
+    color: var(--fg);
+    word-break: break-all;
+  }
+  .stat .v .unit { color: var(--fg-dim); font-size: 11.5px; }
+  .stat .v em { color: var(--accent); font-style: normal; }
+
+  /* ---------- Hex dump ---------- */
+  .hex-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .hex-header .label {
+    font-size: 11px;
+    color: var(--fg-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .hex-note { font-size: 11.5px; color: var(--warn); }
+  .hex-dump {
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.65;
+    white-space: pre;
+  }
+  .hex-col-head {
+    color: var(--fg-faint);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .hex-row { display: block; }
+  .hex-row .off  { color: var(--hex-off); }
+  .hex-row .hb   { color: var(--hex-byte); }
+  .hex-row .hb.zero { color: var(--fg-faint); }
+  .hex-row .sep  { color: var(--fg-faint); padding: 0 10px 0 8px; }
+  .hex-row .asc  { color: var(--hex-ascii); }
+  .hex-row .asc .dot { color: var(--hex-dot); }
+
+  /* animate-in */
+  .hex-row.anim {
+    animation: rowin .28s ease both;
+  }
+  @keyframes rowin {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .fade-in { animation: fadein .35s ease both; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- misc ---------- */
+  .hidden { display: none !important; }
+  .roundtrip-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(78,201,176,0.08);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 12.5px;
+    margin-top: 14px;
+  }
+  .roundtrip-badge.fail {
+    background: rgba(240,113,120,0.08);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  .roundtrip-badge .mark { font-weight: 700; }
+  .error-msg {
+    color: var(--danger);
+    font-size: 12.5px;
+    margin-top: 10px;
+  }
+  footer {
+    margin-top: 28px;
+    font-size: 11px;
+    color: var(--fg-faint);
+    text-align: center;
+    line-height: 1.7;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hex-row.anim, .fade-in { animation: none !important; }
+    * { transition: none !important; }
+  }
+
+  @media (max-width: 560px) {
+    body { padding: 16px 10px 48px; }
+    .hex-dump { font-size: 11px; padding: 8px; }
+    .dropzone { padding: 28px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="prompt">▮</span> Binary Round-Trip Inspector</h1>
+  <p class="subtitle">Media → raw bytes → hex dump → reconstructed Blob. A byte-for-byte verification harness for WebRTC chunked transfer.</p>
+  <div class="privacy-note">
+    <span class="dot"></span>
+    Fully client-side · no server · no uploads · no network calls — your file never leaves this tab.
+  </div>
+</header>
+
+<div class="mode-switch" role="tablist" aria-label="Direction">
+  <button class="mode-btn active" id="modeEncodeBtn" role="tab" aria-selected="true">
+    <span class="mb-title">① Encode</span>
+    <span class="mb-sub">media / text <span class="mb-arrow">→</span> raw bytes + hex</span>
+  </button>
+  <button class="mode-btn" id="modeDecodeBtn" role="tab" aria-selected="false">
+    <span class="mb-title">② Decode</span>
+    <span class="mb-sub">raw bytes (hex / base64) <span class="mb-arrow">→</span> media / text</span>
+  </button>
+</div>
+
+<!-- ===================== ENCODE MODE ===================== -->
+<div id="encodeMode">
+
+<!-- STEP 0: input -->
+<section class="step active" id="step-input">
+  <div class="step-head">
+    <span class="step-num">0</span>
+    <span class="step-title">Select source media</span>
+    <span class="step-status" id="status-input">awaiting file</span>
+  </div>
+  <div class="step-body">
+    <div class="tabs" role="tablist" aria-label="Input source">
+      <button class="tab active" id="tabFile" role="tab" aria-selected="true">File</button>
+      <button class="tab" id="tabText" role="tab" aria-selected="false">Text</button>
+    </div>
+
+    <div id="panelFile" role="tabpanel" aria-labelledby="tabFile">
+      <div class="dropzone" id="dropzone" tabindex="0" role="button"
+           aria-label="Select or drop an image or video file">
+        <span class="glyph" aria-hidden="true">⇪</span>
+        <div class="big">Drop an image or video here</div>
+        <div class="small">or press Enter / click to browse — <code>image/*</code>, <code>video/*</code></div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*,video/*">
+    </div>
+
+    <div id="panelText" role="tabpanel" aria-labelledby="tabText" class="hidden">
+      <textarea id="textInput" placeholder="Type or paste text — it will be UTF-8 encoded to raw bytes, dumped as hex, then reconstructed and verified byte-for-byte."></textarea>
+      <div class="text-meta" id="textMeta">0 characters</div>
+      <div class="toolbar">
+        <button class="btn btn-primary" id="encodeTextBtn">▷ Encode this text</button>
+      </div>
+    </div>
+
+    <div class="error-msg hidden" id="inputError"></div>
+  </div>
+</section>
+
+<!-- STEP 1: encode -->
+<section class="step hidden" id="step-encode">
+  <div class="step-head">
+    <span class="step-num">1</span>
+    <span class="step-title">Encode → ArrayBuffer + hex dump</span>
+    <span class="step-status" id="status-encode">pending</span>
+  </div>
+  <div class="step-body">
+    <div class="preview-wrap" style="margin-bottom:18px;">
+      <div class="preview-box">
+        <div class="preview-label">Original (direct from File)</div>
+        <div class="media-frame" id="originalFrame"></div>
+      </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="hex-header">
+      <span class="label">Hex dump — raw bytes</span>
+      <span class="hex-note" id="hexNote"></span>
+    </div>
+    <div class="hex-dump" id="hexDump" aria-label="Hexadecimal dump of file bytes"></div>
+
+    <div class="hex-header" style="margin-top:18px;">
+      <span class="label">Encoded output — full bytes</span>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="copyB64Btn">⧉ Copy encoded (Base64)</button>
+      <button class="btn" id="copyHexBtn">⧉ Copy encoded (Hex)</button>
+      <button class="btn" id="downloadBinBtn">↓ Download .bin</button>
+    </div>
+    <div class="text-meta" style="margin-top:8px;">Paste either form straight into <strong>Decode</strong> mode to verify the reverse trip.</div>
+
+    <div class="hex-header" style="margin-top:18px;">
+      <span class="label">Report</span>
+    </div>
+    <div class="toolbar">
+      <button class="btn" id="copyReportBtn">⧉ Copy report (Markdown)</button>
+      <button class="btn" id="downloadReportBtn">↓ Download .md</button>
+    </div>
+  </div>
+</section>
+
+<!-- STEP 2: decode -->
+<section class="step hidden" id="step-decode">
+  <div class="step-head">
+    <span class="step-num">2</span>
+    <span class="step-title">Decode → rebuild Blob → render</span>
+    <span class="step-status" id="status-decode">pending</span>
+  </div>
+  <div class="step-body">
+    <div class="toolbar" style="margin-bottom:16px;">
+      <button class="btn btn-primary" id="decodeBtn">▷ Run decode (rebuild from bytes)</button>
+    </div>
+    <div class="preview-wrap" id="decodeWrap" style="display:none;">
+      <div class="preview-box">
+        <div class="preview-label">Reconstructed (from stored ArrayBuffer + MIME)</div>
+        <div class="media-frame" id="decodedFrame"></div>
+      </div>
+    </div>
+    <div id="roundtripResult"></div>
+  </div>
+</section>
+
+<div class="toolbar">
+  <button class="btn" id="resetBtn">↺ Clear &amp; load a new file</button>
+</div>
+
+</div><!-- /encodeMode -->
+
+<!-- ===================== DECODE MODE ===================== -->
+<div id="decodeMode" class="hidden">
+
+<!-- STEP A: paste bytes -->
+<section class="step active" id="dstep-input">
+  <div class="step-head">
+    <span class="step-num">A</span>
+    <span class="step-title">Paste raw bytes</span>
+    <span class="step-status" id="status-dinput">awaiting input</span>
+  </div>
+  <div class="step-body">
+    <div class="field-row">
+      <div class="field">
+        <label for="decodeFormat">Format</label>
+        <select id="decodeFormat">
+          <option value="hex">Hex</option>
+          <option value="base64">Base64</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1 1 220px;">
+        <label for="decodeMime">MIME type (how to render)</label>
+        <input id="decodeMime" type="text" value="image/png" placeholder="e.g. image/png, video/mp4, text/plain">
+      </div>
+    </div>
+    <textarea id="decodeData" placeholder="Paste hex (e.g. 89 50 4e 47 …) or base64. Whitespace and newlines are ignored for hex."></textarea>
+    <div class="text-meta" id="decodeMeta">no input</div>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="decodeRunBtn">▷ Decode → reconstruct</button>
+    </div>
+    <div class="error-msg hidden" id="decodeError"></div>
+  </div>
+</section>
+
+<!-- STEP B: parsed bytes -->
+<section class="step hidden" id="dstep-bytes">
+  <div class="step-head">
+    <span class="step-num">B</span>
+    <span class="step-title">Parsed bytes → ArrayBuffer + hex dump</span>
+    <span class="step-status" id="status-dbytes">pending</span>
+  </div>
+  <div class="step-body">
+    <div class="stats" id="decodeStats"></div>
+    <div class="hex-header">
+      <span class="label">Hex dump — parsed bytes</span>
+      <span class="hex-note" id="decodeHexNote"></span>
+    </div>
+    <div class="hex-dump" id="decodeHexDump" aria-label="Hexadecimal dump of parsed bytes"></div>
+    <div class="toolbar" style="margin-top:16px;">
+      <button class="btn" id="dCopyReportBtn">⧉ Copy report (Markdown)</button>
+      <button class="btn" id="dDownloadReportBtn">↓ Download .md</button>
+    </div>
+  </div>
+</section>
+
+<!-- STEP C: reconstructed -->
+<section class="step hidden" id="dstep-render">
+  <div class="step-head">
+    <span class="step-num">C</span>
+    <span class="step-title">Reconstructed media</span>
+    <span class="step-status" id="status-drender">pending</span>
+  </div>
+  <div class="step-body">
+    <div class="preview-wrap">
+      <div class="preview-box">
+        <div class="preview-label">Rendered from pasted bytes + MIME</div>
+        <div class="media-frame" id="decodeRenderFrame"></div>
+      </div>
+    </div>
+    <div id="decodeRenderResult"></div>
+  </div>
+</section>
+
+<div class="toolbar">
+  <button class="btn" id="decodeResetBtn">↺ Clear decode input</button>
+</div>
+
+</div><!-- /decodeMode -->
+
+<footer>
+  Open this file directly in any modern browser. Nothing is transmitted.<br>
+  Hex view capped at the first 512 bytes; the full buffer is always used for reconstruction.
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- config ----
+  var HEX_CAP = 512;          // bytes shown in hex view
+  var CHUNK_SIZE = 16 * 1024; // 16 KB WebRTC chunk
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---- state ----
+  var state = {
+    file: null,
+    buffer: null,   // ArrayBuffer
+    mime: "",
+    name: "",
+    size: 0,
+    isText: false,  // text-mode source
+    verified: null, // null = decode not run, true/false = result
+    mode: "encode", // "encode" | "decode"
+    objectUrls: []  // track for revocation
+  };
+
+  // ---- elements ----
+  var $ = function (id) { return document.getElementById(id); };
+  var dropzone   = $("dropzone");
+  var fileInput  = $("fileInput");
+  var inputError = $("inputError");
+
+  var stepEncode = $("step-encode");
+  var stepDecode = $("step-decode");
+  var stepInput  = $("step-input");
+
+  var originalFrame = $("originalFrame");
+  var statsEl       = $("stats");
+  var hexDump       = $("hexDump");
+  var hexNote       = $("hexNote");
+
+  var decodeBtn      = $("decodeBtn");
+  var decodeWrap     = $("decodeWrap");
+  var decodedFrame   = $("decodedFrame");
+  var roundtripResult= $("roundtripResult");
+  var resetBtn       = $("resetBtn");
+
+  var tabFile   = $("tabFile");
+  var tabText   = $("tabText");
+  var panelFile = $("panelFile");
+  var panelText = $("panelText");
+  var textInput = $("textInput");
+  var textMeta  = $("textMeta");
+  var encodeTextBtn   = $("encodeTextBtn");
+  var copyReportBtn   = $("copyReportBtn");
+  var downloadReportBtn = $("downloadReportBtn");
+
+  // ---------- helpers ----------
+  function fmtBytes(n) {
+    if (n < 1024) return n + " B";
+    var u = ["KB","MB","GB"], i = -1, v = n;
+    do { v /= 1024; i++; } while (v >= 1024 && i < u.length - 1);
+    return v.toFixed(2) + " " + u[i];
+  }
+
+  function fmtNum(n) {
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+
+  function trackUrl(url) { state.objectUrls.push(url); return url; }
+
+  function revokeUrls() {
+    state.objectUrls.forEach(function (u) { URL.revokeObjectURL(u); });
+    state.objectUrls = [];
+  }
+
+  function setStatus(el, text, done) {
+    var step = el.closest(".step");
+    el.textContent = text;
+    if (done) { step.classList.add("done"); step.classList.remove("active"); }
+  }
+
+  function showError(msg) {
+    inputError.textContent = msg;
+    inputError.classList.remove("hidden");
+  }
+  function clearError() {
+    inputError.textContent = "";
+    inputError.classList.add("hidden");
+  }
+
+  // ---------- input handling ----------
+  function pickFile() { fileInput.click(); }
+
+  dropzone.addEventListener("click", pickFile);
+  dropzone.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickFile(); }
+  });
+  fileInput.addEventListener("change", function (e) {
+    if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+  });
+
+  ["dragenter","dragover"].forEach(function (ev) {
+    dropzone.addEventListener(ev, function (e) {
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.add("dragover");
+    });
+  });
+  ["dragleave","drop"].forEach(function (ev) {
+    dropzone.addEventListener(ev, function (e) {
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.remove("dragover");
+    });
+  });
+  dropzone.addEventListener("drop", function (e) {
+    var dt = e.dataTransfer;
+    if (dt && dt.files && dt.files[0]) handleFile(dt.files[0]);
+  });
+
+  function handleFile(file) {
+    clearError();
+    var type = file.type || "";
+    if (!/^image\//.test(type) && !/^video\//.test(type)) {
+      // fall back to extension sniff, but warn
+      showError("Unsupported or unknown type: \"" + (type || "n/a") +
+                "\". This tool previews image/* and video/* only. Encode stats still apply, but preview may be blank.");
+    }
+    state.file = file;
+    state.name = file.name;
+    state.mime = type;
+    state.size = file.size;
+    state.isText = false;
+    runEncode();
+  }
+
+  // ---------- input mode tabs ----------
+  function selectTab(which) {
+    var isFile = which === "file";
+    tabFile.classList.toggle("active", isFile);
+    tabText.classList.toggle("active", !isFile);
+    tabFile.setAttribute("aria-selected", String(isFile));
+    tabText.setAttribute("aria-selected", String(!isFile));
+    panelFile.classList.toggle("hidden", !isFile);
+    panelText.classList.toggle("hidden", isFile);
+    clearError();
+    (isFile ? dropzone : textInput).focus();
+  }
+  tabFile.addEventListener("click", function () { selectTab("file"); });
+  tabText.addEventListener("click", function () { selectTab("text"); });
+
+  textInput.addEventListener("input", function () {
+    var len = textInput.value.length;
+    var bytes = new TextEncoder().encode(textInput.value).length;
+    textMeta.textContent = fmtNum(len) + " characters · " + fmtNum(bytes) + " UTF-8 bytes";
+  });
+
+  encodeTextBtn.addEventListener("click", function () {
+    clearError();
+    var txt = textInput.value;
+    if (!txt.length) { showError("Enter some text to encode."); return; }
+    var buf = new TextEncoder().encode(txt).buffer; // UTF-8 ArrayBuffer
+    // synthesize a File-like Blob so the original preview path is uniform
+    var blob = new Blob([buf], { type: "text/plain;charset=utf-8" });
+    state.file = blob;
+    state.name = "pasted-text.txt";
+    state.mime = "text/plain;charset=utf-8";
+    state.size = blob.size;
+    state.isText = true;
+    runEncode();
+  });
+
+  // ---------- STEP 1: encode ----------
+  function runEncode() {
+    state.verified = null;
+    state.mode = "encode";
+    setStatus($("status-input"), "loaded: " + state.name, true);
+
+    // original preview
+    if (state.isText) {
+      renderText(originalFrame, textInput.value);
+    } else {
+      renderMedia(originalFrame, trackUrl(URL.createObjectURL(state.file)), state.mime);
+    }
+
+    stepEncode.classList.remove("hidden");
+    stepEncode.classList.add("active", "fade-in");
+    setStatus($("status-encode"), "reading…", false);
+
+    var reader = new FileReader();
+    reader.onerror = function () {
+      setStatus($("status-encode"), "read error", false);
+      showError("Failed to read file as ArrayBuffer.");
+    };
+    reader.onload = function () {
+      state.buffer = reader.result; // ArrayBuffer
+      renderStats(statsEl);
+      renderHex(state.buffer, hexDump, hexNote);
+      setStatus($("status-encode"), "encoded ✓", true);
+      // reveal decode step
+      stepDecode.classList.remove("hidden");
+      stepDecode.classList.add("active", "fade-in");
+      setStatus($("status-decode"), "ready to decode", false);
+      decodeBtn.focus();
+    };
+    reader.readAsArrayBuffer(state.file);
+  }
+
+  function renderMedia(frame, url, mime) {
+    frame.innerHTML = "";
+    var el;
+    if (/^video\//.test(mime)) {
+      el = document.createElement("video");
+      el.controls = true;
+      el.muted = true;
+      el.playsInline = true;
+    } else {
+      el = document.createElement("img");
+      el.alt = "media preview";
+    }
+    el.src = url;
+    frame.appendChild(el);
+  }
+
+  function renderText(frame, str) {
+    frame.innerHTML = "";
+    var pre = document.createElement("pre");
+    pre.className = "text-preview";
+    pre.textContent = str;
+    frame.appendChild(pre);
+  }
+
+  function renderStats(target) {
+    var chunks = Math.ceil(state.size / CHUNK_SIZE) || 0;
+    var rows = [
+      ["File name", escapeHtml(state.name || "—")],
+      ["MIME type", "<em>" + escapeHtml(state.mime || "unknown") + "</em>"],
+      ["Total size", fmtNum(state.size) + " <span class='unit'>bytes (" + fmtBytes(state.size) + ")</span>"],
+      ["16 KB chunks", "<em>" + fmtNum(chunks) + "</em> <span class='unit'>× 16384 B</span>"],
+      ["Last chunk", fmtNum(state.size - (chunks > 0 ? (chunks - 1) * CHUNK_SIZE : 0)) + " <span class='unit'>bytes</span>"],
+      ["ArrayBuffer", fmtNum(state.buffer.byteLength) + " <span class='unit'>bytes</span>"]
+    ];
+    target.innerHTML = rows.map(function (r) {
+      return "<div class='stat'><div class='k'>" + r[0] + "</div><div class='v'>" + r[1] + "</div></div>";
+    }).join("");
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" })[c];
+    });
+  }
+
+  function renderHex(buffer, dumpEl, noteEl) {
+    var bytes = new Uint8Array(buffer);
+    var shown = Math.min(bytes.length, HEX_CAP);
+    var hidden = bytes.length - shown;
+
+    noteEl.textContent = hidden > 0
+      ? fmtNum(hidden) + " more bytes not shown"
+      : "showing all " + fmtNum(bytes.length) + " bytes";
+
+    var html = "<span class='hex-col-head'>Offset    " +
+               "00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f   ASCII</span>";
+
+    for (var off = 0; off < shown; off += 16) {
+      var offStr = off.toString(16).padStart(8, "0");
+      var hexPart = "";
+      var ascPart = "";
+      for (var i = 0; i < 16; i++) {
+        var idx = off + i;
+        if (idx < shown) {
+          var b = bytes[idx];
+          var hb = b.toString(16).padStart(2, "0");
+          hexPart += "<span class='hb" + (b === 0 ? " zero" : "") + "'>" + hb + "</span> ";
+          if (b >= 0x20 && b <= 0x7e) {
+            ascPart += "<span class='ach'>" + escapeHtml(String.fromCharCode(b)) + "</span>";
+          } else {
+            ascPart += "<span class='dot'>.</span>";
+          }
+        } else {
+          hexPart += "   ";
+          ascPart += " ";
+        }
+        if (i === 7) hexPart += " "; // group gap
+      }
+      var rowClass = reduceMotion ? "hex-row" : "hex-row anim";
+      var style = reduceMotion ? "" : " style='animation-delay:" + Math.min((off / 16) * 18, 600) + "ms'";
+      html += "<span class='" + rowClass + "'" + style + ">" +
+                "<span class='off'>" + offStr + "</span>" +
+                "<span class='sep'> </span>" +
+                "<span class='hb'>" + hexPart + "</span>" +
+                "<span class='sep'></span>" +
+                "<span class='asc'>" + ascPart + "</span>" +
+              "</span>";
+    }
+    dumpEl.innerHTML = html;
+  }
+
+  // ---------- STEP 2: decode ----------
+  decodeBtn.addEventListener("click", runDecode);
+
+  function runDecode() {
+    if (!state.buffer) return;
+    setStatus($("status-decode"), "rebuilding Blob…", false);
+
+    // Rebuild a fresh Blob purely from the stored ArrayBuffer + MIME type.
+    var rebuilt = new Blob([state.buffer], { type: state.mime || "application/octet-stream" });
+
+    if (state.isText) {
+      // reconstruct the string straight from the rebuilt bytes
+      renderText(decodedFrame, new TextDecoder().decode(state.buffer));
+    } else {
+      var url = trackUrl(URL.createObjectURL(rebuilt));
+      renderMedia(decodedFrame, url, state.mime);
+    }
+    decodeWrap.style.display = "flex";
+    decodeWrap.classList.add("fade-in");
+
+    // Verify byte-for-byte by reading the rebuilt blob back.
+    var verifyReader = new FileReader();
+    verifyReader.onload = function () {
+      var ok = buffersEqual(state.buffer, verifyReader.result);
+      state.verified = ok;
+      renderRoundtrip(ok, rebuilt.size);
+      setStatus($("status-decode"), ok ? "round trip verified ✓" : "MISMATCH", true);
+    };
+    verifyReader.onerror = function () {
+      renderRoundtrip(false, rebuilt.size);
+      setStatus($("status-decode"), "verify error", false);
+    };
+    verifyReader.readAsArrayBuffer(rebuilt);
+  }
+
+  function buffersEqual(a, b) {
+    if (a.byteLength !== b.byteLength) return false;
+    var ua = new Uint8Array(a), ub = new Uint8Array(b);
+    for (var i = 0; i < ua.length; i++) {
+      if (ua[i] !== ub[i]) return false;
+    }
+    return true;
+  }
+
+  function renderRoundtrip(ok, size) {
+    if (ok) {
+      roundtripResult.innerHTML =
+        "<div class='roundtrip-badge'><span class='mark'>✓</span>" +
+        "Byte-for-byte identical — " + fmtNum(state.size) + " bytes in, " +
+        fmtNum(size) + " bytes out. The reconstructed Blob matches the original buffer exactly.</div>";
+    } else {
+      roundtripResult.innerHTML =
+        "<div class='roundtrip-badge fail'><span class='mark'>✕</span>" +
+        "Round-trip mismatch — reconstructed bytes differ from the original.</div>";
+    }
+  }
+
+  // ---------- report export ----------
+  function hexTextLines(buffer) {
+    var bytes = new Uint8Array(buffer);
+    var shown = Math.min(bytes.length, HEX_CAP);
+    var lines = ["Offset    00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f   ASCII"];
+    for (var off = 0; off < shown; off += 16) {
+      var hexPart = "", ascPart = "";
+      for (var i = 0; i < 16; i++) {
+        var idx = off + i;
+        if (idx < shown) {
+          var b = bytes[idx];
+          hexPart += b.toString(16).padStart(2, "0") + " ";
+          ascPart += (b >= 0x20 && b <= 0x7e) ? String.fromCharCode(b) : ".";
+        } else {
+          hexPart += "   ";
+          ascPart += " ";
+        }
+        if (i === 7) hexPart += " ";
+      }
+      lines.push(off.toString(16).padStart(8, "0") + "  " + hexPart + "  " + ascPart);
+    }
+    return lines.join("\n");
+  }
+
+  function buildReport() {
+    if (!state.buffer) return "";
+    var chunks = Math.ceil(state.size / CHUNK_SIZE) || 0;
+    var hidden = state.buffer.byteLength - Math.min(state.buffer.byteLength, HEX_CAP);
+    var isEncode = state.mode === "encode";
+    var rt = state.verified === null
+      ? "_decode step not run_"
+      : (state.verified ? "✓ verified byte-for-byte identical" : "✕ MISMATCH — bytes differ");
+
+    var lines = [
+      "# Binary " + (isEncode ? "Round-Trip" : "Decode") + " Report",
+      "",
+      "| Field | Value |",
+      "| --- | --- |",
+      "| Direction | " + (isEncode ? "encode (media/text → bytes)" : "decode (bytes → media/text)") + " |",
+      "| Source | `" + state.name + "` |",
+      "| MIME type | `" + (state.mime || "unknown") + "` |",
+      "| Total size | " + fmtNum(state.size) + " bytes (" + fmtBytes(state.size) + ") |",
+      "| 16 KB chunks | " + fmtNum(chunks) + " × 16384 B |",
+      "| ArrayBuffer length | " + fmtNum(state.buffer.byteLength) + " bytes |"
+    ];
+    if (isEncode) lines.push("| Round trip | " + rt + " |");
+    lines.push("",
+      "## Hex dump (first " + Math.min(state.buffer.byteLength, HEX_CAP) + " bytes)",
+      "",
+      "```",
+      hexTextLines(state.buffer),
+      "```"
+    );
+    if (hidden > 0) lines.push("", "_" + fmtNum(hidden) + " more bytes not shown._");
+    lines.push("", "---", "_Generated client-side by the Binary Round-Trip Inspector._");
+    return lines.join("\n");
+  }
+
+  function flashBtn(btn, text) {
+    var orig = btn.textContent;
+    btn.textContent = text;
+    setTimeout(function () { btn.textContent = orig; }, 1400);
+  }
+
+  function fallbackCopy(text, btn) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); flashBtn(btn, "✓ Copied"); }
+    catch (e) { flashBtn(btn, "copy failed"); }
+    document.body.removeChild(ta);
+  }
+
+  // copy arbitrary text via clipboard API with fallback
+  function copyText(text, btn) {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { flashBtn(btn, "✓ Copied"); },
+        function () { fallbackCopy(text, btn); }
+      );
+    } else {
+      fallbackCopy(text, btn);
+    }
+  }
+
+  // ArrayBuffer → encoded text (full buffer, not capped)
+  function bufToBase64(buffer) {
+    var bytes = new Uint8Array(buffer);
+    var binary = "";
+    var CHUNK = 0x8000;
+    for (var i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(binary);
+  }
+  function bufToHex(buffer) {
+    var bytes = new Uint8Array(buffer);
+    var out = new Array(bytes.length);
+    for (var i = 0; i < bytes.length; i++) out[i] = bytes[i].toString(16).padStart(2, "0");
+    return out.join(" ");
+  }
+
+  function wireExport(copyBtn, dlBtn) {
+    copyBtn.addEventListener("click", function () { copyText(buildReport(), copyBtn); });
+    dlBtn.addEventListener("click", function () {
+      var md = buildReport();
+      if (!md) return;
+      var blob = new Blob([md], { type: "text/markdown" });
+      var url = URL.createObjectURL(blob);
+      var base = (state.name || "report").replace(/\.[^.]+$/, "") || "report";
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = base + ".roundtrip.md";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+      flashBtn(dlBtn, "✓ Saved .md");
+    });
+  }
+  wireExport(copyReportBtn, downloadReportBtn);
+  wireExport($("dCopyReportBtn"), $("dDownloadReportBtn"));
+
+  // ---- copy / download the actual encoded output ----
+  $("copyB64Btn").addEventListener("click", function () {
+    if (!state.buffer) return;
+    copyText(bufToBase64(state.buffer), $("copyB64Btn"));
+  });
+  $("copyHexBtn").addEventListener("click", function () {
+    if (!state.buffer) return;
+    copyText(bufToHex(state.buffer), $("copyHexBtn"));
+  });
+  $("downloadBinBtn").addEventListener("click", function () {
+    if (!state.buffer) return;
+    var blob = new Blob([state.buffer], { type: state.mime || "application/octet-stream" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = (state.name || "encoded.bin");
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+    flashBtn($("downloadBinBtn"), "✓ Saved");
+  });
+
+  // ---------- mode switch ----------
+  var modeEncodeBtn = $("modeEncodeBtn");
+  var modeDecodeBtn = $("modeDecodeBtn");
+  var encodeMode = $("encodeMode");
+  var decodeMode = $("decodeMode");
+
+  function switchMode(m) {
+    var enc = m === "encode";
+    modeEncodeBtn.classList.toggle("active", enc);
+    modeDecodeBtn.classList.toggle("active", !enc);
+    modeEncodeBtn.setAttribute("aria-selected", String(enc));
+    modeDecodeBtn.setAttribute("aria-selected", String(!enc));
+    encodeMode.classList.toggle("hidden", !enc);
+    decodeMode.classList.toggle("hidden", enc);
+  }
+  modeEncodeBtn.addEventListener("click", function () { switchMode("encode"); });
+  modeDecodeBtn.addEventListener("click", function () { switchMode("decode"); });
+
+  // ---------- DECODE FROM DATA ----------
+  var decodeFormat = $("decodeFormat");
+  var decodeMime   = $("decodeMime");
+  var decodeData   = $("decodeData");
+  var decodeMeta   = $("decodeMeta");
+  var decodeRunBtn = $("decodeRunBtn");
+  var decodeError  = $("decodeError");
+  var decodeStats  = $("decodeStats");
+  var decodeHexDump= $("decodeHexDump");
+  var decodeHexNote= $("decodeHexNote");
+  var decodeRenderFrame  = $("decodeRenderFrame");
+  var decodeRenderResult = $("decodeRenderResult");
+  var decodeResetBtn = $("decodeResetBtn");
+
+  function parseInput() {
+    var raw = decodeData.value;
+    if (!raw.trim()) return { error: "no input" };
+    if (decodeFormat.value === "hex") {
+      var clean = raw.replace(/0x/gi, "").replace(/[\s,]+/g, "");
+      if (!/^[0-9a-fA-F]*$/.test(clean)) return { error: "invalid hex characters" };
+      if (clean.length % 2 !== 0) return { error: "odd number of hex digits" };
+      var arr = new Uint8Array(clean.length / 2);
+      for (var i = 0; i < arr.length; i++) arr[i] = parseInt(clean.substr(i * 2, 2), 16);
+      return { bytes: arr };
+    } else {
+      try {
+        var bin = atob(raw.replace(/\s+/g, ""));
+        var u = new Uint8Array(bin.length);
+        for (var j = 0; j < bin.length; j++) u[j] = bin.charCodeAt(j);
+        return { bytes: u };
+      } catch (e) { return { error: "invalid base64" }; }
+    }
+  }
+
+  function updateDecodeMeta() {
+    var p = parseInput();
+    decodeMeta.textContent = p.error ? p.error : (fmtNum(p.bytes.length) + " bytes parsed");
+  }
+  decodeData.addEventListener("input", updateDecodeMeta);
+  decodeFormat.addEventListener("change", function () {
+    updateDecodeMeta();
+    decodeData.placeholder = decodeFormat.value === "hex"
+      ? "Paste hex (e.g. 89 50 4e 47 …) or base64. Whitespace and newlines are ignored for hex."
+      : "Paste base64 (e.g. iVBORw0KGgo…). Whitespace is ignored.";
+  });
+
+  decodeRunBtn.addEventListener("click", function () {
+    decodeError.classList.add("hidden");
+    var p = parseInput();
+    if (p.error || !p.bytes.length) {
+      decodeError.textContent = "Cannot decode: " + (p.error || "no bytes") + ".";
+      decodeError.classList.remove("hidden");
+      return;
+    }
+    var bytes = p.bytes;
+    var mime = decodeMime.value.trim() || "application/octet-stream";
+
+    state.mode = "decode";
+    state.buffer = bytes.buffer.slice(0);
+    state.size = bytes.length;
+    state.mime = mime;
+    state.name = "decoded-bytes";
+    state.isText = /^text\//.test(mime);
+    state.verified = null;
+
+    // Step B — parsed bytes
+    setStatus($("status-dinput"), "parsed " + fmtNum(bytes.length) + " bytes", true);
+    var sb = $("dstep-bytes");
+    sb.classList.remove("hidden"); sb.classList.add("active", "fade-in");
+    renderStats(decodeStats);
+    renderHex(state.buffer, decodeHexDump, decodeHexNote);
+    setStatus($("status-dbytes"), "parsed ✓", true);
+
+    // Step C — reconstruct
+    var sc = $("dstep-render");
+    sc.classList.remove("hidden"); sc.classList.add("active", "fade-in");
+    var rebuilt = new Blob([state.buffer], { type: mime });
+    if (state.isText) {
+      renderText(decodeRenderFrame, new TextDecoder().decode(state.buffer));
+    } else {
+      renderMedia(decodeRenderFrame, trackUrl(URL.createObjectURL(rebuilt)), mime);
+    }
+    decodeRenderResult.innerHTML =
+      "<div class='roundtrip-badge'><span class='mark'>✓</span>" +
+      "Reconstructed " + fmtNum(bytes.length) + " bytes as <strong style='font-weight:600'>" +
+      escapeHtml(mime) + "</strong>. If the preview is blank, the bytes or MIME type don't match a renderable format.</div>";
+    setStatus($("status-drender"), "rendered ✓", true);
+  });
+
+  decodeResetBtn.addEventListener("click", function () {
+    decodeData.value = "";
+    decodeMeta.textContent = "no input";
+    decodeError.classList.add("hidden");
+    decodeStats.innerHTML = "";
+    decodeHexDump.innerHTML = "";
+    decodeHexNote.textContent = "";
+    decodeRenderFrame.innerHTML = "";
+    decodeRenderResult.innerHTML = "";
+    ["dstep-bytes", "dstep-render"].forEach(function (id) {
+      var s = $(id);
+      s.classList.add("hidden");
+      s.classList.remove("active", "done", "fade-in");
+    });
+    var si = $("dstep-input");
+    si.classList.add("active"); si.classList.remove("done");
+    setStatus($("status-dinput"), "awaiting input", false);
+    setStatus($("status-dbytes"), "pending", false);
+    setStatus($("status-drender"), "pending", false);
+    decodeData.focus();
+  });
+
+  // ---------- reset ----------
+  resetBtn.addEventListener("click", reset);
+
+  function reset() {
+    revokeUrls();
+    state.file = null; state.buffer = null; state.mime = ""; state.name = ""; state.size = 0;
+    state.isText = false; state.verified = null;
+
+    fileInput.value = "";
+    textInput.value = "";
+    textMeta.textContent = "0 characters";
+    selectTab("file");
+    clearError();
+
+    originalFrame.innerHTML = "";
+    decodedFrame.innerHTML = "";
+    statsEl.innerHTML = "";
+    hexDump.innerHTML = "";
+    hexNote.textContent = "";
+    roundtripResult.innerHTML = "";
+    decodeWrap.style.display = "none";
+
+    stepEncode.classList.add("hidden");
+    stepEncode.classList.remove("active", "done", "fade-in");
+    stepDecode.classList.add("hidden");
+    stepDecode.classList.remove("active", "done", "fade-in");
+
+    stepInput.classList.add("active");
+    setStatus($("status-input"), "awaiting file", false);
+    stepInput.classList.remove("done");
+    setStatus($("status-encode"), "pending", false);
+    setStatus($("status-decode"), "pending", false);
+
+    dropzone.focus();
+  }
+
+  window.addEventListener("beforeunload", revokeUrls);
+})();
+</script>
+</body>
+</html>
